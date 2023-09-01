@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>demo</title>
+    <script src="./assets/vue-3.3.4/dist/vue.global.prod.js"></script>
+    <script src="./assets/axios-1.5.0/dist/axios.min.js"></script>
+    <script src="./assets/moment-2.29.4/moment.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div>
+        <button @click="queryList">刷新</button>
+        <button @click="generate">生成一个</button>
+        <button @click="generateMany">生成100个</button>
+    </div>
+    <div style="text-align: center">
+        <table>
+            <tr>
+                <th>规则id</th>
+                <th>规则名称</th>
+                <th>规则表达式</th>
+                <th>规则描述</th>
+                <th>最新编号</th>
+                <th>更新时间</th>
+            </tr>
+            <tr v-for="item in displayRules">
+                <td>{{item.ruleId}}</td>
+                <td>{{item.ruleName}}</td>
+                <td>{{item.expression}}</td>
+                <td>{{item.remark}}</td>
+                <td>{{item.latestNumber}}</td>
+                <td>{{item.lastModifiedDate}}</td>
+            </tr>
+        </table>
+    </div>
+</div>
+<script>
+    const {createApp} = Vue
+    createApp({
+        data() {
+            return {
+                rules: [],
+            }
+        },
+        methods: {
+            queryList() {
+                axios({
+                    method: 'get',
+                    url: '/autonumber/queryAllList'
+                }).then(res => {
+                    this.rules = res.data.data
+                })
+            },
+            generate() {
+                axios({
+                    url: '/autonumber/generate/1',
+                    method: 'post'
+                }).then(res => {
+                    this.queryList();
+                })
+            },
+            generateMany() {
+                for (let i = 0; i < 100; i++) {
+                    axios({
+                        url: '/autonumber/generate/1',
+                        method: 'post'
+                    })
+                }
+            }
+        },
+        computed: {
+            displayRules() {
+                return this.rules.map(x => ({
+                    ...x,
+                    lastModifiedDate: moment(x.lastModifiedDate).format('YYYY-MM-DD HH:mm:ss.SSS')
+                }))
+            }
+        },
+        mounted() {
+            this.queryList();
+        }
+    }).mount('#app')
+</script>
+</body>
+</html>
