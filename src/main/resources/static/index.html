@@ -11,35 +11,90 @@
             margin: 0;
             padding: 0
         }
+
+        div.section {
+            display: inline-block;
+            width: 50%;
+        }
+
+        table, tr td {
+            border: 1px solid #000;
+        }
+
+        tbody {
+            display: block;
+            height: 500px;
+            overflow: auto;
+        }
+
+        thead, tbody tr {
+            display: table;
+            width: 100%;
+            table-layout: fixed;
+        }
+
+        thead {
+            width: calc(100% - 1em);
+        }
+
+
     </style>
 </head>
 <body>
 <div id="app">
-    <div>
-        <button @click="queryList">刷新</button>
-        <button @click="generate">生成一个</button>
-        <button @click="generateMany">生成100个</button>
+    <div class="section left">
+        <div>
+            <button @click="queryList">刷新</button>
+            <button @click="generate">生成一个（不安全的）</button>
+            <button @click="safeGenerate">生成一个（安全的）</button>
+            <button @click="generateMany">生成100个（不安全的）</button>
+            <button @click="safeGenerateMany">生成100个（安全的）</button>
+        </div>
+        <div style="text-align: center">
+            <table>
+                <thead>
+                <tr>
+                    <th>规则名称</th>
+                    <th>规则表达式</th>
+                    <th>最新编号</th>
+                    <th>更新时间</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr v-for="item in displayRules">
+                    <td>{{item.ruleName}}</td>
+                    <td>{{item.expression}}</td>
+                    <td>{{item.latestNumber}}</td>
+                    <td>{{item.lastModifiedDate}}</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
-    <div style="text-align: center">
-        <table>
-            <tr>
-                <th>规则id</th>
-                <th>规则名称</th>
-                <th>规则表达式</th>
-                <th>规则描述</th>
-                <th>最新编号</th>
-                <th>更新时间</th>
-            </tr>
-            <tr v-for="item in displayRules">
-                <td>{{item.ruleId}}</td>
-                <td>{{item.ruleName}}</td>
-                <td>{{item.expression}}</td>
-                <td>{{item.remark}}</td>
-                <td>{{item.latestNumber}}</td>
-                <td>{{item.lastModifiedDate}}</td>
-            </tr>
-        </table>
+    <div class="section right">
+        <div>
+            <button @click="queryRecordList">刷新记录</button>
+        </div>
+        <div style="text-align: center">
+            <table>
+                <thead>
+                <tr>
+                    <th>id</th>
+                    <th>recordNumber</th>
+                    <th>更新时间</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr v-for="item in displayRecords">
+                    <td>{{item.id}}</td>
+                    <td>{{item.recordNumber}}</td>
+                    <td>{{item.lastModifiedDate}}</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
+
 </div>
 <script>
     const {createApp} = Vue
@@ -47,6 +102,7 @@
         data() {
             return {
                 rules: [],
+                records: [],
             }
         },
         methods: {
@@ -64,6 +120,16 @@
                     method: 'post'
                 }).then(res => {
                     this.queryList();
+                    this.queryRecordList();
+                })
+            },
+            safeGenerate() {
+                axios({
+                    url: '/autonumber/safeGenerate/1',
+                    method: 'post'
+                }).then(res => {
+                    this.queryList();
+                    this.queryRecordList();
                 })
             },
             generateMany() {
@@ -73,11 +139,30 @@
                         method: 'post'
                     })
                 }
+            },
+            safeGenerateMany() {
+                for (let i = 0; i < 100; i++) {
+                    axios({
+                        url: '/autonumber/safeGenerate/1',
+                        method: 'post'
+                    })
+                }
+            },
+            queryRecordList() {
+                axios('/autonumber/recordList').then(res => {
+                    this.records = res.data.data;
+                })
             }
         },
         computed: {
             displayRules() {
                 return this.rules.map(x => ({
+                    ...x,
+                    lastModifiedDate: moment(x.lastModifiedDate).format('YYYY-MM-DD HH:mm:ss.SSS')
+                }))
+            },
+            displayRecords() {
+                return this.records.map(x => ({
                     ...x,
                     lastModifiedDate: moment(x.lastModifiedDate).format('YYYY-MM-DD HH:mm:ss.SSS')
                 }))

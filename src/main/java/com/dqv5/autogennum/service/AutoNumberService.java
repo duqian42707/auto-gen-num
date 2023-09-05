@@ -1,5 +1,6 @@
 package com.dqv5.autogennum.service;
 
+import com.dqv5.autogennum.entity.AutoNumberRecord;
 import com.dqv5.autogennum.entity.AutoNumberRule;
 import org.springframework.data.domain.Pageable;
 
@@ -21,5 +22,7 @@ public interface AutoNumberService {
 
     String generateNextNumber(int ruleId);
 
+    String safeGenerateNextNumber(int ruleId);
 
+    List<AutoNumberRecord> queryRecordList();
 }

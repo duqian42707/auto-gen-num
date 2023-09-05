@@ -3,6 +3,7 @@ package com.dqv5.autogennum.web;
 
 import com.dqv5.autogennum.common.response.Return;
 import com.dqv5.autogennum.common.response.ReturnEntity;
+import com.dqv5.autogennum.entity.AutoNumberRecord;
 import com.dqv5.autogennum.entity.AutoNumberRule;
 import com.dqv5.autogennum.service.AutoNumberService;
 import lombok.extern.slf4j.Slf4j;
@@ -56,9 +57,16 @@ public class AutoNumberController {
         return Return.build(true, "生成编号成功", number);
     }
 
+    @PostMapping(value = "/safeGenerate/{ruleId}")
+    public ResponseEntity<ReturnEntity<Object>> safeGenerate(@PathVariable int ruleId) {
+        String number = autoNumberService.safeGenerateNextNumber(ruleId);
+        return Return.build(true, "生成编号成功", number);
+    }
+
     @GetMapping(value = "/recordList")
-    public ResponseEntity<ReturnEntity<Object>> recordList() {
-        return Return.build(true, "查询成功");
+    public ResponseEntity<ReturnEntity<List<AutoNumberRecord>>> recordList() {
+        List<AutoNumberRecord> list = autoNumberService.queryRecordList();
+        return Return.build(true, "查询成功", list);
     }
 
 

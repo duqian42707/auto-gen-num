@@ -6,15 +6,18 @@ import com.dqv5.autogennum.exception.GenerateNumberException;
 import com.dqv5.autogennum.repository.AutoNumberRecordRepository;
 import com.dqv5.autogennum.repository.AutoNumberRuleRepository;
 import com.dqv5.autogennum.service.AutoNumberService;
+import com.dqv5.autogennum.utils.RedisTool;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import java.time.LocalDate;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -29,6 +32,9 @@ public class AutoNumberServiceImpl implements AutoNumberService {
     private AutoNumberRuleRepository autoNumberRuleRepository;
     @Resource
     private AutoNumberRecordRepository autoNumberRecordRepository;
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
+    private static final String LOCK_KEY = "AUTO_NUMBER_LOCK";
 
 
     @Override
@@ -98,6 +104,53 @@ public class AutoNumberServiceImpl implements AutoNumberService {
         return result;
     }
 
+    @Override
+    public String safeGenerateNextNumber(int ruleId) {
+        String requestId = UUID.randomUUID().toString();
+        while (true) {
+            boolean getLockOk = RedisTool.tryGetDistributedLock(stringRedisTemplate, LOCK_KEY, requestId, 30);
+            if (getLockOk) {
+                break;
+            }
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        try {
+            AutoNumberRule rule = autoNumberRuleRepository.findById(ruleId).orElseThrow(() -> new GenerateNumberException("未查到ruleId:" + ruleId));
+            // 规则表达式，例如：DQ-${YYYY}-${MM}-${S3}
+            final String expression = rule.getExpression();
+            // 取出最后一次生成的编号，例如：DQ-2021-05-003
+            String latestNumber = rule.getLatestNumber();
+            // 生成下一个流水序列号
+            int serialNumber = this.getSerialNumber(expression, latestNumber);
+            // 替换流水号变量，数字前补0
+            String result = this.replaceYmdVars(expression);
+            for (int i = 1; i <= 9; i++) {
+                result = result.replace("${S" + i + "}", String.format("%0" + i + "d", serialNumber));
+            }
+            rule.setLatestNumber(result);
+            rule.setLastModifiedDate(new Date());
+            autoNumberRuleRepository.save(rule);
+
+            AutoNumberRecord autoNumberRecord = new AutoNumberRecord();
+            autoNumberRecord.setRecordNumber(result);
+            autoNumberRecord.setCreateDate(new Date());
+            autoNumberRecord.setLastModifiedDate(new Date());
+            autoNumberRecordRepository.save(autoNumberRecord);
+            return result;
+        } finally {
+            RedisTool.releaseDistributedLock(stringRedisTemplate, LOCK_KEY, requestId);
+        }
+    }
+
+    @Override
+    public List<AutoNumberRecord> queryRecordList() {
+        return autoNumberRecordRepository.findByOrderByRecordNumberDesc();
+    }
 
     /**
      * @param expression   规则表达式，例如：DQ-${YYYY}-${MM}-${S3}
