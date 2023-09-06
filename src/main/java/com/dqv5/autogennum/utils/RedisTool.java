@@ -4,6 +4,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.data.redis.core.script.RedisScript;
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.params.SetParams;
 
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
@@ -15,7 +16,7 @@ public class RedisTool {
 
     private static final String LOCK_SUCCESS = "OK";
     private static final String SET_IF_NOT_EXIST = "NX";
-    private static final String SET_WITH_EXPIRE_TIME = "PX";
+    private static final String SET_WITH_EXPIRE_TIME = "EX";
 
     private static final Long RELEASE_SUCCESS = 1L;
 
@@ -31,7 +32,8 @@ public class RedisTool {
      */
 
     public static boolean tryGetDistributedLock(Jedis jedis, String lockKey, String requestId, int expireTime) {
-        String result = jedis.set(lockKey, requestId, SET_IF_NOT_EXIST, SET_WITH_EXPIRE_TIME, expireTime);
+//        String result = jedis.set(lockKey, requestId, SET_IF_NOT_EXIST, SET_WITH_EXPIRE_TIME, expireTime);
+        String result = jedis.set(lockKey, requestId, SetParams.setParams().nx().ex(expireTime));
         return LOCK_SUCCESS.equals(result);
     }
 
