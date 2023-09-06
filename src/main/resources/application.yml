@@ -12,4 +12,5 @@ spring:
     host: localhost
     port: 6379
 autogennum:
-  init-rule: asdf
+  # 初始化规则: DQ${YYYY}${MM}${DD}${S6} . ${xx} 直接使用会被认为是引用变量，所以需要转义
+  init-rule: DQ#{'$'}{YYYY}#{'$'}{MM}#{'$'}{DD}#{'$'}{S6}
